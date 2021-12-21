@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <type_traits>
+#include <array>
 namespace TKPEmu::NES::Devices {
     union FlagUnion {
     public:
@@ -25,43 +26,57 @@ namespace TKPEmu::NES::Devices {
     private:
         uint8_t value_;
     };
-    template<typename T>
-    struct Register {
-    public:
-        Register(FlagUnion& P_ref) : P_ref_(P_ref) {
-            static_assert(std::is_unsigned<T>::value, "Register takes unsigned parameters only");
-        }
-        operator T&() const {
-            return value_;
-        }
-        T& operator=(const T& rhs) {
-            return value_ = rhs;
-        }
-        // Postfix operator need not be implemented, since this
-        // operator does computation and it would only complicate things
-        T& operator++() {
-            ++value_;
-            P_ref_.Flags.Zero = !static_cast<bool>(value_);
-            P_ref_.Flags.Negative = (value_ >> 7);
-            return value_;
-        }
-        T& operator--() {
-            --value_;
-            P_ref_.Flags.Zero = !static_cast<bool>(value_);
-            P_ref_.Flags.Negative = (value_ >> 7);
-            return value_;
-        }
-    private:
-        T value_;
-        FlagUnion& P_ref_;
+    enum Operation {
+        ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
+        CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
+        JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
+        RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
+        XXX
     };
+    enum AddressingMode {
+        IMP, IMM, ZPG, ZPX,
+        ZPY, ABS, ABX, ABY,
+        IND, INX, INY, ACC,
+        REL, XXX
+    };
+    struct Instruction {
+        Operation op;
+        AddressingMode addr;
+    }
     class NES {
+    private:
+        std::array<Instruction, 0x100> instructions_ = {
+            #define I(A,B) { A, B }
+            I(BRK,IMP), I(ORA,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ZPG), I(ASL,ZPG), I(XXX,XXX), I(PHP,IMP), I(ORA,IMM), I(ASL,ACC), I(XXX,XXX), I(XXX,XXX), I(ORA,ABS), I(ASL,ABS), I(XXX,XXX),
+            I(BPL,REL), I(ORA,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ZPX), I(ASL,ZPX), I(XXX,XXX), I(CLC,IMP), I(ORA,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ABX), I(ASL,ABX), I(XXX,XXX),
+            I(JSR,ABS), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(BIT,ZPG), I(AND,ZPG), I(ROL,ZPG), I(XXX,XXX), I(PLP,IMP), I(AND,IMM), I(ROL,ACC), I(XXX,XXX), I(BIT,ABS), I(AND,ABS), I(ROL,ABS), I(XXX,XXX),
+            I(BMI,REL), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ZPX), I(ROL,ZPX), I(XXX,XXX), I(SEC,IMP), I(AND,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ABX), I(ROL,ABX), I(XXX,XXX),
+            
+            #undef I
+        };
     public:
         FlagUnion P;
-        Register<uint8_t> A, X, Y, SP;
-        Register<uint16_t> PC;
+        uint8_t A, X, Y, SP;
+        uint16_t PC;
     private:
-
+        template<typename T>
+        uint8_t inc(T& mem, FlagUnion* P_ptr = nullptr) {
+            ++mem;
+            if (P_ptr) {
+                P_ptr.Flags.Zero = !static_cast<bool>(mem);
+                P_ptr.Flags.Negative = (mem >> 7);
+            }
+            return 1;
+        }
+        template<typename T>
+        uint8_t dec(T& mem, FlagUnion* P_ptr = nullptr) {
+            --mem;
+            if (P_ptr) {
+                P_ptr.Flags.Zero = !static_cast<bool>(mem);
+                P_ptr.Flags.Negative = (mem >> 7);
+            }
+            return 1;
+        }
     };
 }
 #endif
