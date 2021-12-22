@@ -5,6 +5,7 @@
 #include <limits>
 #include <type_traits>
 #include <array>
+#include <queue>
 namespace TKPEmu::NES::Devices {
     union FlagUnion {
     public:
@@ -51,7 +52,7 @@ namespace TKPEmu::NES::Devices {
             I(BPL,REL), I(ORA,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ZPX), I(ASL,ZPX), I(XXX,XXX), I(CLC,IMP), I(ORA,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ABX), I(ASL,ABX), I(XXX,XXX),
             I(JSR,ABS), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(BIT,ZPG), I(AND,ZPG), I(ROL,ZPG), I(XXX,XXX), I(PLP,IMP), I(AND,IMM), I(ROL,ACC), I(XXX,XXX), I(BIT,ABS), I(AND,ABS), I(ROL,ABS), I(XXX,XXX),
             I(BMI,REL), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ZPX), I(ROL,ZPX), I(XXX,XXX), I(SEC,IMP), I(AND,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ABX), I(ROL,ABX), I(XXX,XXX),
-            
+
             #undef I
         };
     public:
@@ -59,6 +60,9 @@ namespace TKPEmu::NES::Devices {
         uint8_t A, X, Y, SP;
         uint16_t PC;
     private:
+        // We split the instruction into it's parts and update APU&PPU in between instructions
+        // like on real hardware
+        std::queue<void(*f)()> instruction_queue_;
         template<typename T>
         uint8_t inc(T& mem, FlagUnion* P_ptr = nullptr) {
             ++mem;
