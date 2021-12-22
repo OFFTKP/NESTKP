@@ -32,29 +32,29 @@ namespace TKPEmu::NES::Devices {
         CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
         JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
         RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
-        XXX
+        XXO
     };
     enum AddressingMode {
         IMP, IMM, ZPG, ZPX,
         ZPY, ABS, ABX, ABY,
         IND, INX, INY, ACC,
-        REL, XXX
+        REL, XXA
     };
     struct Instruction {
         Operation op;
         AddressingMode addr;
-    }
+    };
     class NES {
     private:
-        std::array<Instruction, 0x100> instructions_ = {
+        std::array<Instruction, 0x100> instructions_ = { {
             #define I(A,B) { A, B }
-            I(BRK,IMP), I(ORA,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ZPG), I(ASL,ZPG), I(XXX,XXX), I(PHP,IMP), I(ORA,IMM), I(ASL,ACC), I(XXX,XXX), I(XXX,XXX), I(ORA,ABS), I(ASL,ABS), I(XXX,XXX),
-            I(BPL,REL), I(ORA,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ZPX), I(ASL,ZPX), I(XXX,XXX), I(CLC,IMP), I(ORA,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(ORA,ABX), I(ASL,ABX), I(XXX,XXX),
-            I(JSR,ABS), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(BIT,ZPG), I(AND,ZPG), I(ROL,ZPG), I(XXX,XXX), I(PLP,IMP), I(AND,IMM), I(ROL,ACC), I(XXX,XXX), I(BIT,ABS), I(AND,ABS), I(ROL,ABS), I(XXX,XXX),
-            I(BMI,REL), I(AND,IND), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ZPX), I(ROL,ZPX), I(XXX,XXX), I(SEC,IMP), I(AND,ABY), I(XXX,XXX), I(XXX,XXX), I(XXX,XXX), I(AND,ABX), I(ROL,ABX), I(XXX,XXX),
+            I(BRK,IMP), I(ORA,IND), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ZPG), I(ASL,ZPG), I(XXO,XXA), I(PHP,IMP), I(ORA,IMM), I(ASL,ACC), I(XXO,XXA), I(XXO,XXA), I(ORA,ABS), I(ASL,ABS), I(XXO,XXA),
+            I(BPL,REL), I(ORA,IND), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ZPX), I(ASL,ZPX), I(XXO,XXA), I(CLC,IMP), I(ORA,ABY), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ABX), I(ASL,ABX), I(XXO,XXA),
+            I(JSR,ABS), I(AND,IND), I(XXO,XXA), I(XXO,XXA), I(BIT,ZPG), I(AND,ZPG), I(ROL,ZPG), I(XXO,XXA), I(PLP,IMP), I(AND,IMM), I(ROL,ACC), I(XXO,XXA), I(BIT,ABS), I(AND,ABS), I(ROL,ABS), I(XXO,XXA),
+            I(BMI,REL), I(AND,IND), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(AND,ZPX), I(ROL,ZPX), I(XXO,XXA), I(SEC,IMP), I(AND,ABY), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(AND,ABX), I(ROL,ABX), I(XXO,XXA),
 
             #undef I
-        };
+        } };
     public:
         FlagUnion P;
         uint8_t A, X, Y, SP;
@@ -62,7 +62,7 @@ namespace TKPEmu::NES::Devices {
     private:
         // We split the instruction into it's parts and update APU&PPU in between instructions
         // like on real hardware
-        std::queue<void(*f)()> instruction_queue_;
+        std::queue<void (*)()> instruction_queue_;
         template<typename T>
         uint8_t inc(T& mem, FlagUnion* P_ptr = nullptr) {
             ++mem;
