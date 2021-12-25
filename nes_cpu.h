@@ -39,7 +39,7 @@ namespace TKPEmu::NES::Devices {
         enum AddressingMode {
             IMP, IMM, ZPG, ZPX,
             ZPY, ABS, ABX, ABY,
-            IND, INX, INY, ACC,
+            IND, IDX, IDY, ACC,
             REL, XXA
         };
         struct Instruction {
@@ -71,8 +71,8 @@ namespace TKPEmu::NES::Devices {
         uint8_t inc(T& mem, FlagUnion* P_ptr = nullptr) {
             ++mem;
             if (P_ptr) {
-                P_ptr.Flags.Zero = !static_cast<bool>(mem);
-                P_ptr.Flags.Negative = (mem >> 7);
+                P_ptr->Flags.Zero = !static_cast<bool>(mem);
+                P_ptr->Flags.Negative = (mem >> 7);
             }
             return 1;
         }
@@ -80,8 +80,8 @@ namespace TKPEmu::NES::Devices {
         uint8_t dec(T& mem, FlagUnion* P_ptr = nullptr) {
             --mem;
             if (P_ptr) {
-                P_ptr.Flags.Zero = !static_cast<bool>(mem);
-                P_ptr.Flags.Negative = (mem >> 7);
+                P_ptr->Flags.Zero = !static_cast<bool>(mem);
+                P_ptr->Flags.Negative = (mem >> 7);
             }
             return 1;
         }
