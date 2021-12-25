@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <array>
 #include <queue>
+#include <string>
 namespace TKPEmu::NES::Devices {
     union FlagUnion {
     public:
@@ -43,11 +44,12 @@ namespace TKPEmu::NES::Devices {
     struct Instruction {
         Operation op;
         AddressingMode addr;
+        std::string name;
     };
     class NES {
     private:
         std::array<Instruction, 0x100> instructions_ = { {
-            #define I(A,B) { A, B }
+            #define I(A,B) { A, B, #A ", " #B }
             I(BRK,IMP), I(ORA,IND), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ZPG), I(ASL,ZPG), I(XXO,XXA), I(PHP,IMP), I(ORA,IMM), I(ASL,ACC), I(XXO,XXA), I(XXO,XXA), I(ORA,ABS), I(ASL,ABS), I(XXO,XXA),
             I(BPL,REL), I(ORA,IND), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ZPX), I(ASL,ZPX), I(XXO,XXA), I(CLC,IMP), I(ORA,ABY), I(XXO,XXA), I(XXO,XXA), I(XXO,XXA), I(ORA,ABX), I(ASL,ABX), I(XXO,XXA),
             I(JSR,ABS), I(AND,IND), I(XXO,XXA), I(XXO,XXA), I(BIT,ZPG), I(AND,ZPG), I(ROL,ZPG), I(XXO,XXA), I(PLP,IMP), I(AND,IMM), I(ROL,ACC), I(XXO,XXA), I(BIT,ABS), I(AND,ABS), I(ROL,ABS), I(XXO,XXA),
