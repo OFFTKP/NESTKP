@@ -8,44 +8,46 @@
 #include <queue>
 #include <string>
 namespace TKPEmu::NES::Devices {
-    union FlagUnion {
-    public:
-        struct {
-            uint8_t Carry        : 1;
-            uint8_t Zero         : 1;
-            uint8_t InterruptDis : 1;
-            uint8_t Decimal      : 1;
-            uint8_t Unused       : 2;
-            uint8_t Overflow     : 1;
-            uint8_t Negative     : 1;
-        } Flags;
-        operator uint8_t&() {
-            return value_;
-        }
-        uint8_t& operator=(const uint8_t& rhs) {
-            return value_ = rhs;
-        }
-    private:
-        uint8_t value_;
-    };
-    enum Operation {
-        ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
-        CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
-        JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
-        RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
-        XXO
-    };
-    enum AddressingMode {
-        IMP, IMM, ZPG, ZPX,
-        ZPY, ABS, ABX, ABY,
-        IND, INX, INY, ACC,
-        REL, XXA
-    };
-    struct Instruction {
-        Operation op;
-        AddressingMode addr;
-        std::string name;
-    };
+    namespace {
+        union FlagUnion {
+        public:
+            struct {
+                uint8_t Carry        : 1;
+                uint8_t Zero         : 1;
+                uint8_t InterruptDis : 1;
+                uint8_t Decimal      : 1;
+                uint8_t Unused       : 2;
+                uint8_t Overflow     : 1;
+                uint8_t Negative     : 1;
+            } Flags;
+            operator uint8_t&() {
+                return value_;
+            }
+            uint8_t& operator=(const uint8_t& rhs) {
+                return value_ = rhs;
+            }
+        private:
+            uint8_t value_;
+        };
+        enum Operation {
+            ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
+            CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
+            JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
+            RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
+            XXO
+        };
+        enum AddressingMode {
+            IMP, IMM, ZPG, ZPX,
+            ZPY, ABS, ABX, ABY,
+            IND, INX, INY, ACC,
+            REL, XXA
+        };
+        struct Instruction {
+            Operation op;
+            AddressingMode addr;
+            std::string name;
+        };
+    }
     class NES {
     private:
         std::array<Instruction, 0x100> instructions_ = { {
