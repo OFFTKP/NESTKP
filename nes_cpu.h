@@ -8,7 +8,7 @@
 #include <queue>
 #include <string>
 namespace TKPEmu::NES::Devices {
-    using FuncRet = void;
+    using FuncRet = uint8_t;
     using FuncRetPtr = FuncRet (*)();
     using TickRet = bool;
     namespace {
