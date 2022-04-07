@@ -1,6 +1,6 @@
 #pragma once
 #ifndef TKP_NES_CPU_H
-#define TKPEMU_NES_CPU_H
+#define TKP_NES_CPU_H
 #include <cstdint>
 #include <limits>
 #include <type_traits>
