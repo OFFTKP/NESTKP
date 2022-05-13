@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.19)
 project(NESTKP)
-file(GLOB SRC_FILES "*.cpp")
-file(GLOB HDR_FILES "*.h")
-add_library(NESTKP ${HDR_FILES} ${SRC_FILES})
+set(FILES nes_cpu.cpp)
+add_library(NESTKP ${FILES})
