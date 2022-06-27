@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
 project(NESTKP)
-set(FILES nes_cpu.cpp)
+set(FILES nes.cxx nes_cpu.cxx nes_cpubus.cxx)
 add_library(NESTKP ${FILES})
 target_include_directories(NESTKP PUBLIC ../)
