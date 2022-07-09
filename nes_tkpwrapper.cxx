@@ -1,9 +1,7 @@
 #include "nes_tkpwrapper.hxx"
 
 namespace TKPEmu::NES {
-    NES::NES(std::unique_ptr<OptionsBase> opt) {
-
-    }
+    NES::NES() {}
 
     NES::~NES() {}
 
