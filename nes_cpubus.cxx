@@ -40,7 +40,9 @@ namespace TKPEmu::NES::Devices {
     }
 
     void Bus::write(uint16_t addr, uint8_t data) {
-
+        uint8_t* page = fast_map_[addr >> 8];
+        if (page)
+            *(page + (addr & 0xFF)) = data;
     }
 
     void Bus::refill_prg_map() {
@@ -52,6 +54,7 @@ namespace TKPEmu::NES::Devices {
                     fast_map_[i] = &prg_rom_[(i << 8) - 0xC000];
                 break;
             }
+            default: throw ErrorFactory::generate_exception(__func__, __LINE__, "Unknown mapper");
         }
     }
 

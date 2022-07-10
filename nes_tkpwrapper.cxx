@@ -20,13 +20,10 @@ namespace TKPEmu::NES {
     void NES::start() {
         std::lock_guard<std::mutex> lg(ThreadStartedMutex);
         Reset();
+        Paused.store(true);
         while (!Stopped.load()) {
 			if (!Paused.load()) {
                 update();
-                while (MessageQueue->PollRequests()) {
-					auto request = MessageQueue->PopRequest();
-					poll_request(request);
-				}
             } else {
 				Step.wait(false);
 				Step.store(false);
@@ -40,7 +37,22 @@ namespace TKPEmu::NES {
     }
 
     void NES::update() {
+        while (MessageQueue->PollRequests()) {
+            auto request = MessageQueue->PopRequest();
+            poll_request(request);
+        }
+        v_log();
         cpu_.Tick();
+    }
+
+    void NES::v_log() {
+		if (logging_) {
+            if (log_flags_.test(0)) {
+                *log_file_ptr_ << "PC: " << std::setw(4) << std::setfill('0') << std::hex << cpu_.PC << " A:" << std::setw(2) << (uint16_t)cpu_.A << 
+                    " X:" << (uint16_t)cpu_.X << " Y:" << (uint16_t)cpu_.Y << " P:" << cpu_.P << " SP:" << (uint16_t)cpu_.SP;
+            }
+            *log_file_ptr_ << std::endl;
+        }
     }
 
     bool NES::poll_uncommon_request(const Request& req) {

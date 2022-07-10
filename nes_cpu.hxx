@@ -15,13 +15,13 @@
     auto ind = b1 | (b2 << 8); \
     auto b1_p = read(ind++); \
     uint16_t b2_p = read_no_d(ind); \
-    uint16_t data = b1_p | (b2_p << 8); \
+    uint16_t addr = b1_p | (b2_p << 8); \
     func; \
 }
 #define absolute(x, func) template<> void CPU::x<Absolute>() {\
     auto b1 = read(PC++); \
     uint16_t b2 = read_no_d(PC++); \
-    uint16_t data = b1 | (b2 << 8); \
+    uint16_t addr = b1 | (b2 << 8); \
     func; \
 }
 #define zeropage(x, func) template<> void CPU::x<ZeroPage>() {\
@@ -47,9 +47,11 @@ namespace TKPEmu::NES::Devices {
         void Reset();
     private:
         Bus bus_;
-        __always_inline void TAX(), TXA(), JSR(), SEC(), BCS(), BCC(), CLC();
+        __always_inline void TAX(), TXA(), JSR(), SEC(), BCS(),
+            BCC(), CLC(), BEQ(), BNE(), BVS(), BVC(), BMI(), BPL(),
+            RTS(), SEI(), SED(), CLD(), PHP(), PLA(), PLP(), PHA();
         // Template functions to match addressing modes
-        t(JMP); t(LDX); t(STX);
+        t(JMP); t(LDX); t(STX); t(LDA); t(STA); t(BIT); t(CMP);
         __always_inline void delay(uint8_t i);
         uint8_t A, X, Y, SP;
         std::bitset<8> P;
@@ -60,6 +62,7 @@ namespace TKPEmu::NES::Devices {
         uint8_t read_no_d(uint16_t addr);
         uint8_t read(uint16_t addr);
         void push(uint8_t data);
+        uint8_t pull();
         void write(uint16_t addr, uint8_t data);
 
         __always_inline void fetch();

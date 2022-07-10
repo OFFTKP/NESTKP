@@ -10,9 +10,8 @@ namespace TKPEmu::NES {
         TKP_EMULATOR(NES);
     private:
         void update();
-
+        void v_log() override;
         Devices::CPU cpu_;
-
         bool should_draw_ = false;
     };
 }
