@@ -1,6 +1,7 @@
 #include "nes_cpubus.hxx"
 #include <include/error_factory.hxx>
 #include <fstream>
+#include <iostream>
 #define kb16 16384
 
 namespace TKPEmu::NES::Devices {
@@ -41,12 +42,13 @@ namespace TKPEmu::NES::Devices {
 
     void Bus::write(uint16_t addr, uint8_t data) {
         uint8_t* page = fast_map_[addr >> 8];
-        if (page)
+        if (page) {
             *(page + (addr & 0xFF)) = data;
+        }
     }
 
     void Bus::refill_prg_map() {
-        for (uint8_t i = 0x00; i < 0x08; i++) {
+        for (uint16_t i = 0x00; i < 0x08; i++) {
             fast_map_[i] = &ram_[i << 8];
         }
         switch (mapper_) {
