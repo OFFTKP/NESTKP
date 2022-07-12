@@ -39,9 +39,10 @@ namespace TKPEmu::NES::Devices {
         std::array<uint8_t, 512> trainer_;
         std::vector<uint8_t> prg_rom_;
         std::vector<uint8_t> chr_rom_;
-        uint16_t mapper_;
+        uint16_t mapper_ = 0;
         Header header_;
         std::array<uint8_t*, 0x100> fast_map_;
+        std::array<uint8_t, 0x800> ram_;
         friend class CPU;
     };
 }

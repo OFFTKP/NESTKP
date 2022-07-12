@@ -48,8 +48,12 @@ namespace TKPEmu::NES {
     void NES::v_log() {
 		if (logging_) {
             if (log_flags_.test(0)) {
-                *log_file_ptr_ << "PC: " << std::setw(4) << std::setfill('0') << std::hex << cpu_.PC << " A:" << std::setw(2) << (uint16_t)cpu_.A << 
-                    " X:" << (uint16_t)cpu_.X << " Y:" << (uint16_t)cpu_.Y << " P:" << cpu_.P << " SP:" << (uint16_t)cpu_.SP;
+                *log_file_ptr_ << std::setw(4) << std::setfill('0') << std::hex << std::uppercase << cpu_.PC << " A:" << std::setw(2) << (uint16_t)cpu_.A << 
+                    " X:" << std::setw(2) << (uint16_t)cpu_.X << " Y:" << std::setw(2) << (uint16_t)cpu_.Y << " P:" << std::setw(2) << cpu_.P.to_ullong() <<
+                    " SP:" << std::setw(2) << (uint16_t)cpu_.SP;
+            }
+            if (log_flags_.test(1)) {
+                *log_file_ptr_ << " CYC:" << std::dec << cpu_.cycles_;
             }
             *log_file_ptr_ << std::endl;
         }

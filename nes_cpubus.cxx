@@ -46,6 +46,9 @@ namespace TKPEmu::NES::Devices {
     }
 
     void Bus::refill_prg_map() {
+        for (uint8_t i = 0x00; i < 0x08; i++) {
+            fast_map_[i] = &ram_[i << 8];
+        }
         switch (mapper_) {
             case MAPPER_NROM: {
                 for (uint16_t i = 0x80; i <= 0xBF; i++)
