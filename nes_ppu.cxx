@@ -12,10 +12,12 @@ enum ScanlineState {
     HIGH_BG_BYTE_HIGH = 7,
 };
 namespace TKPEmu::NES::Devices {
+    PPU::PPU(std::mutex& draw_mutex) : draw_mutex_(draw_mutex) {}
     void PPU::SetNMI(std::function<void(void)> func) {
         fire_nmi = std::move(func);
     }
     void PPU::Tick() {
+        static bool vblank_first = false;
         if (scanline_ <= 239) {
             handle_normal_scanline();
             scanline_cycle_++;
@@ -23,24 +25,38 @@ namespace TKPEmu::NES::Devices {
             handle_empty_scanline();
             scanline_cycle_++;
         } else if (scanline_ <= 260) {
-            ppu_status_ |= 0x80;
-            if (nmi_enabled_) {
-                nmi_enabled_ = false;
+            if (scanline_ == 241 && scanline_cycle_ == 1) {
+                ppu_status_ |= 0x80;
+                // std::cout << "set vbl: " << std::hex << master_clock_dbg_ << std::endl;
+                std::lock_guard lg(draw_mutex_);
+                std::swap(screen_color_data_, screen_color_data_second_);
+                should_draw_ = true;
+            }
+            if (nmi_output_) {
+                nmi_output_ = false;
                 fire_nmi();
             }
             handle_empty_scanline();
             scanline_cycle_++;
         } else if (scanline_ == 261) {
-            ppu_status_ &= ~0x80;
+            if (scanline_cycle_ == 1) {
+                ppu_status_ &= ~0x80;
+            }
+            handle_empty_scanline();
+            scanline_cycle_++;
+        } else if (scanline_ == 262) {
             scanline_ = 0;
             cur_y_ = 0;
         }
+        master_clock_dbg_++;
     }
 
     void PPU::handle_normal_scanline() {
         if (scanline_cycle_ == 0) {
             // NOP
         } else if (scanline_cycle_ <= 256) {
+            fetch_x_ = (scanline_cycle_ + 8 - 1) / 8;
+            fetch_y_ = cur_y_ / 8;
             execute_pipeline();
             draw_pixel();
             pixel_cycle_++;
@@ -48,15 +64,19 @@ namespace TKPEmu::NES::Devices {
                 pixel_cycle_ = 0;
         } else if (scanline_cycle_ < 321) {
 
-        } else if (scanline_cycle_ < 336) {
+        } else if (scanline_cycle_ <= 336) {
+            fetch_x_ = 0;
+            fetch_y_ = (cur_y_ + 1) / 8;
             execute_pipeline();
-        } else if (scanline_cycle_ < 340) {
+            pixel_cycle_++;
+            if (pixel_cycle_ == 8)
+                pixel_cycle_ = 0;
+        } else if (scanline_cycle_ <= 340) {
 
         } else {
             scanline_++;
             scanline_cycle_ = 0;
             cur_y_++;
-            cur_x_ = 0;
         }
     }
 
@@ -65,7 +85,6 @@ namespace TKPEmu::NES::Devices {
             scanline_++;
             scanline_cycle_ = 0;
             cur_y_++;
-            cur_x_ = 0;
         }
     }
 
@@ -108,7 +127,7 @@ namespace TKPEmu::NES::Devices {
                 background_pattern_address_ = !!(ppu_ctrl_ & 0b1'0000) * 0x1000;
                 sprite_size_ = ppu_ctrl_ & 0b10'0000;
                 ppu_master_ = ppu_ctrl_ & 0b100'0000;
-                nmi_enabled_ = ppu_ctrl_ & 0b1000'0000;
+                nmi_output_ = ppu_ctrl_ & 0b1000'0000;
                 std::cout << "ppu ctrl:" << std::hex << (int)ppu_ctrl_ << std::endl;
                 break;
             }
@@ -139,7 +158,7 @@ namespace TKPEmu::NES::Devices {
                 break;
             }
             case 0b111: {
-                vram_[vram_addr_ & 0x7FF] = data;
+                write(vram_addr_, data);
                 vram_addr_ += 1 + 31 * vram_incr_vertical_;
                 break;
             }
@@ -147,39 +166,47 @@ namespace TKPEmu::NES::Devices {
     }
 
     uint8_t PPU::fetch_nt() {
-        auto tile_x = (scanline_cycle_ - 1) / 8;
-        auto tile_y = cur_y_ / 8;
-        return vram_[(nt_addr_ + tile_x + tile_y * 32) & 0x7FF];
+        auto addr = (nt_addr_ + fetch_x_ + fetch_y_ * 32) & 0x7FF;
+        return vram_.at(addr);
     }
     
     uint8_t PPU::fetch_pt_low() {
-        auto addr = nt_latch_;
-        return read(addr * 16 + (scanline_ & 0b111));//test_tile_.at(0 + (cur_y_ & 0b111));
+        uint16_t addr = nt_latch_ * 16 + (scanline_ & 0b111);
+        return read(background_pattern_address_ + addr);
     }
 
     uint8_t PPU::fetch_pt_high() {
-        uint16_t addr = nt_latch_;
-        return read(addr * 16 + (scanline_ & 0b111));//test_tile_.at(8 + (cur_y_ & 0b111));
+        uint16_t addr = nt_latch_ * 16 + (scanline_ & 0b111);
+        return read(background_pattern_address_ + 8 + addr);
     }
 
     void PPU::draw_pixel() {
         uint8_t bg_cur = piso_bg_high_ | piso_bg_low_;
-        auto pixel = scanline_cycle_ - 1;
-        screen_color_data_.at(pixel * 4 + cur_y_ * 256 * 4) = !!(bg_cur & 0x80) * 255;
-        screen_color_data_.at(pixel * 4 + cur_y_ * 256 * 4 + 1) = !!(bg_cur & 0x80) * 255;
-        screen_color_data_.at(pixel * 4 + cur_y_ * 256 * 4 + 2) = !!(bg_cur & 0x80) * 255;
-        screen_color_data_.at(pixel * 4 + cur_y_ * 256 * 4 + 3) = 255;
+        auto pixel = cur_x_ * 4 + cur_y_ * 256 * 4;//scanline_cycle_ - 1;
+        screen_color_data_second_.at(pixel) = !!(bg_cur & 0x80) * 255;
+        screen_color_data_second_.at(pixel + 1) = !!(bg_cur & 0x80) * 255;
+        screen_color_data_second_.at(pixel + 2) = !!(bg_cur & 0x80) * 255;
+        screen_color_data_second_.at(pixel + 3) = 255;
+        cur_x_++;
+        if (cur_x_ == 256)
+            cur_x_ = 0;
         piso_bg_low_ <<= 1;
         piso_bg_high_ <<= 1;
-        should_draw_ = true;
     }
 
     uint8_t PPU::read(uint16_t addr) {
         if (addr < 0x2000)
-            return chr_rom_[addr];
+            return chr_rom_[addr & 0x1FFF];
         else if (addr < 0x3000)
             return vram_[addr & 0x7FF];
         return 0;
+    }
+
+    void PPU::write(uint16_t addr, uint8_t data) {
+        if (addr < 0x2000) {
+            chr_rom_.at(addr) = data;
+        } else if (addr < 0x3000)
+            vram_.at(addr & 0x7FF) = data;
     }
     
     void PPU::Reset() {
@@ -187,8 +214,9 @@ namespace TKPEmu::NES::Devices {
         cur_y_ = 0;
         scanline_ = 0;
         scanline_cycle_ = 0;
+        pixel_cycle_ = 0;
         for (int i = 0; i < 256 * 240 * 4; i += 4) {
-            screen_color_data_ [i] = 255;
+            screen_color_data_ [i] = 0;
             screen_color_data_ [i + 1] = 0;
             screen_color_data_ [i + 2] = 0;
             screen_color_data_ [i + 3] = 255;

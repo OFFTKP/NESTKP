@@ -122,6 +122,7 @@ namespace TKPEmu::NES::Devices {
         CPU(CPUBus& bus);
         void Tick();
         void Reset();
+        void SoftReset();
         void NMI();
     private:
         CPUBus& bus_;
@@ -129,7 +130,7 @@ namespace TKPEmu::NES::Devices {
             BCC(), CLC(), BEQ(), BNE(), BVS(), BVC(), BMI(), BPL(),
             RTS(), SEI(), SED(), CLD(), PHP(), PLA(), PLP(), PHA(),
             CLV(), INY(), INX(), DEY(), DEX(), BCS(), TSX(), TXS(),
-            RTI();
+            RTI(), BRK(), CLI();
         // Template functions to match addressing modes
         t(JMP); t(LDX); t(STX); t(LDA); t(STA); t(BIT); t(CMP); t(AND);
         t(ORA); t(EOR); t(ADC); t(LDY); t(CPY); t(CPX); t(SBC); t(LSR);

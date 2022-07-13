@@ -2,8 +2,8 @@
 #include <include/error_factory.hxx>
 #include <fstream>
 #include <iostream>
-#define kb16 16384
-#define kb8 8092
+#define kb16 0x4000
+#define kb8 0x2000
 
 namespace TKPEmu::NES::Devices {
     CPUBus::CPUBus(PPU& ppu) : ppu_(ppu) {}
@@ -25,8 +25,12 @@ namespace TKPEmu::NES::Devices {
             prg_rom_.resize(prg_rom_size * kb16);
             ifs.read(reinterpret_cast<char*>(prg_rom_.data()), prg_rom_size * kb16);
             auto chr_rom_size = ((header_.prg_chr_msb >> 4) << 8) | header_.chr_lsb;
-            ppu_.chr_rom_.resize(chr_rom_size * kb8);
-            ifs.read(reinterpret_cast<char*>(ppu_.chr_rom_.data()), chr_rom_size * kb8);
+            if (chr_rom_size == 0) {
+                ppu_.chr_rom_.resize(kb8);
+            } else {
+                ppu_.chr_rom_.resize(chr_rom_size * kb8);
+                ifs.read(reinterpret_cast<char*>(ppu_.chr_rom_.data()), chr_rom_size * kb8);
+            }
             refill_prg_map();
         } else {
             return false;
@@ -50,7 +54,13 @@ namespace TKPEmu::NES::Devices {
             switch (addr & 0b111) {
                 case 0b000: return ppu_.ppu_ctrl_;
                 case 0b001: return ppu_.ppu_mask_;
-                case 0b010: return ppu_.ppu_status_;
+                case 0b010: {
+                    auto temp = ppu_.ppu_status_;
+                    if (temp & 0x80)
+                    std::cout << "read set status:" << std::hex << (int)temp << " at: " << ppu_.master_clock_dbg_ << std::endl;
+                    ppu_.ppu_status_ &= ~0x80;
+                    return temp;
+                }
                 case 0b011: return ppu_.oam_addr_;
                 case 0b100: return ppu_.oam_data_;
                 case 0b101: return ppu_.ppu_scroll_;
@@ -77,15 +87,21 @@ namespace TKPEmu::NES::Devices {
     }
 
     void CPUBus::refill_prg_map() {
+        fast_map_.fill(0);
         for (uint16_t i = 0x00; i < 0x08; i++) {
-            fast_map_[i] = &ram_[i << 8];
+            fast_map_.at(i) = &ram_.at(i << 8);
         }
         switch (mapper_) {
             case MAPPER_NROM: {
                 for (uint16_t i = 0x80; i <= 0xBF; i++)
-                    fast_map_[i] = &prg_rom_[(i << 8) - 0x8000];
-                for (uint16_t i = 0xC0; i <= 0xFF; i++)
-                    fast_map_[i] = &prg_rom_[(i << 8) - 0xC000];
+                    fast_map_.at(i) = &prg_rom_.at((i << 8) - 0x8000);
+                if (prg_rom_.size() == kb16 * 2) {
+                    for (uint16_t i = 0xC0; i <= 0xFF; i++)
+                        fast_map_.at(i) = &prg_rom_.at((i << 8) - 0x8000);
+                } else {
+                    for (uint16_t i = 0xC0; i <= 0xFF; i++)
+                        fast_map_.at(i) = &prg_rom_.at((i << 8) - 0xC000);
+                }
                 break;
             }
             default: throw ErrorFactory::generate_exception(__func__, __LINE__, "Unknown mapper");

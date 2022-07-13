@@ -12,7 +12,7 @@ namespace TKPEmu::NES {
     private:
         void update();
         void v_log() override;
-        Devices::PPU ppu_;
+        Devices::PPU ppu_ { DrawMutex };
         Devices::CPUBus cpubus_ { ppu_ };
         Devices::CPU cpu_ { cpubus_ };
     };

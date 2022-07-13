@@ -22,6 +22,7 @@ namespace TKPEmu::NES {
     void NES_TKPWrapper::start() {
         std::lock_guard<std::mutex> lg(ThreadStartedMutex);
         Reset();
+        Paused.store(true);
         while (!Stopped.load()) {
 			if (!Paused.load()) {
                 update();
@@ -34,7 +35,7 @@ namespace TKPEmu::NES {
     }
 
     void NES_TKPWrapper::reset() {
-        cpu_.Reset();
+        cpu_.SoftReset();
         ppu_.Reset();
     }
 

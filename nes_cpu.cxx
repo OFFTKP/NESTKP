@@ -4,17 +4,15 @@ constexpr uint8_t C = 0;
 constexpr uint8_t Z = 1;
 constexpr uint8_t I = 2;
 constexpr uint8_t D = 3;
+constexpr uint8_t B_4 = 4;
+constexpr uint8_t B_5 = 5;
 constexpr uint8_t V = 6;
 constexpr uint8_t N = 7;
 #define check_nz(x) P.set(Z, x == 0); P.set(N, x & 0x80)
-#define ADC_impl int8_t cur_carry = P.test(C); \
-            int8_t data_cast = data;\
-            int8_t A_cast = A;\
-            bool carry = ((uint16_t)A + (uint16_t)data + cur_carry) > 0xFF;\
-            bool temp = __builtin_add_overflow(data_cast, cur_carry, &data_cast);\
-            bool overflow = __builtin_add_overflow(A_cast, data_cast, &A_cast) | temp;\
-            A = A_cast;\
-            P.set(C, carry); P.set(V, overflow); check_nz(A)
+#define ADC_impl auto temp = (uint16_t)A + (uint16_t)data + (uint16_t)P.test(C); \
+                P.set(C, temp > 0xFF); P.set(Z, (temp & 0xFF) == 0); P.set(V, (~((uint16_t)A ^ (uint16_t)data) & ((uint16_t)A ^ (uint16_t)temp)) & 0x0080); \
+                P.set(N, temp & 0x80);\
+                A = temp;
 #define SBC_impl data = data ^ 0xFF; \
         ADC_impl
 
@@ -149,6 +147,11 @@ namespace TKPEmu::NES::Devices {
     void CPU::CLV() {
         delay(1);
         P.set(V, false);
+    }
+
+    void CPU::CLI() {
+        delay(1);
+        P.set(I, false);
     }
 
     void CPU::PHA() {
@@ -346,12 +349,27 @@ namespace TKPEmu::NES::Devices {
     }
     
     void CPU::NMI() {
-        uint8_t p = P.to_ulong() | 0b0011'0000;
-        push(p);
+        std::cout << "nmi" << std::endl;
         push(PC >> 8);
         push(PC & 0xFF);
-        uint16_t b1 = read(0xFFFB);
-        uint16_t b2 = read(0xFFFA);
+        uint8_t p = P.to_ulong() & ~0b0011'0000;
+        push(p);
+        P.set(I, 1);
+        uint16_t b1 = read(0xFFFA);
+        uint16_t b2 = read(0xFFFB);
+        uint16_t addr = b1 | (b2 << 8);
+        PC = addr;
+    }
+
+    void CPU::BRK() {
+        PC += 1;
+        push(PC >> 8);
+        push(PC & 0xFF);
+        uint8_t p = P.to_ulong() | 0b0011'0000;
+        push(p);
+        P.set(I, true);
+        uint16_t b1 = read_no_d(0xFFFE);
+        uint16_t b2 = read_no_d(0xFFFF);
         uint16_t addr = b1 | (b2 << 8);
         PC = addr;
     }
@@ -401,6 +419,7 @@ namespace TKPEmu::NES::Devices {
     void CPU::execute() {
         #define ins(num, instr) case num: instr(); break
         switch (fetched_) {
+            ins(0x00, BRK);
             ins(0x01, ORA<IndirectX>);
             ins(0x03, SLO<IndirectX>);
             ins(0x04, NOP<ZeroPage>);
@@ -479,6 +498,7 @@ namespace TKPEmu::NES::Devices {
             ins(0x55, EOR<ZeroPageX>);
             ins(0x56, LSR<ZeroPageX>);
             ins(0x57, SRE<ZeroPageX>);
+            ins(0x58, CLI);
             ins(0x59, EOR<AbsoluteY>);
             ins(0x5A, NOP<Implied>);
             ins(0x5B, SRE<AbsoluteY>);
@@ -648,6 +668,14 @@ namespace TKPEmu::NES::Devices {
         Y = 0;
         P = 0x24;
         cycles_ = 7;
+        was_prefetched_ = false;
+        bus_.Reset();
+    }
+
+    void CPU::SoftReset() {
+        PC = (read_no_d(0xFFFD) << 8) | read_no_d(0xFFFC);
+        SP -= 3;
+        P.set(I, 1);
         was_prefetched_ = false;
         bus_.Reset();
     }
