@@ -113,16 +113,18 @@ class IndirectY;
 class Accumulator;
 
 namespace TKPEmu::NES {
-    class NES;
+    class NES_TKPWrapper;
 }
 
 namespace TKPEmu::NES::Devices {
     class CPU {
     public:
+        CPU(CPUBus& bus);
         void Tick();
         void Reset();
+        void NMI();
     private:
-        Bus bus_;
+        CPUBus& bus_;
         __always_inline void TAY(), TAX(), TYA(), TXA(), JSR(), SEC(), 
             BCC(), CLC(), BEQ(), BNE(), BVS(), BVC(), BMI(), BPL(),
             RTS(), SEI(), SED(), CLD(), PHP(), PLA(), PLP(), PHA(),
@@ -150,7 +152,7 @@ namespace TKPEmu::NES::Devices {
         __always_inline void fetch();
         __always_inline void prefetch();
         __always_inline void execute();
-        friend class TKPEmu::NES::NES;
+        friend class TKPEmu::NES::NES_TKPWrapper;
     };
 }
 #endif

@@ -3,9 +3,11 @@
 #include <fstream>
 #include <iostream>
 #define kb16 16384
+#define kb8 8092
 
 namespace TKPEmu::NES::Devices {
-    bool Bus::LoadCartridge(std::string path) {
+    CPUBus::CPUBus(PPU& ppu) : ppu_(ppu) {}
+    bool CPUBus::LoadCartridge(std::string path) {
         std::ifstream ifs(path, std::ios::in | std::ios::binary);
         if (ifs.is_open()) {
             ifs.unsetf(std::ios::skipws);
@@ -23,8 +25,8 @@ namespace TKPEmu::NES::Devices {
             prg_rom_.resize(prg_rom_size * kb16);
             ifs.read(reinterpret_cast<char*>(prg_rom_.data()), prg_rom_size * kb16);
             auto chr_rom_size = ((header_.prg_chr_msb >> 4) << 8) | header_.chr_lsb;
-            chr_rom_.resize(chr_rom_size * kb16);
-            ifs.read(reinterpret_cast<char*>(chr_rom_.data()), chr_rom_size * kb16);
+            ppu_.chr_rom_.resize(chr_rom_size * kb8);
+            ifs.read(reinterpret_cast<char*>(ppu_.chr_rom_.data()), chr_rom_size * kb8);
             refill_prg_map();
         } else {
             return false;
@@ -32,22 +34,49 @@ namespace TKPEmu::NES::Devices {
         return true;
     }
 
-    uint8_t Bus::read(uint16_t addr) {
-        uint8_t* page = fast_map_[addr >> 8];
+    uint8_t CPUBus::read(uint16_t addr) {
+        uint8_t* page = fast_map_.at(addr >> 8);
+        uint8_t ret;
         if (page)
-            return *(page + (addr & 0xFF));
+            ret = *(page + (addr & 0xFF));
         else
-            return 0xFF;
+            ret = redirect_address_r(addr);
+        last_read_ = ret;
+        return ret;
     }
 
-    void Bus::write(uint16_t addr, uint8_t data) {
-        uint8_t* page = fast_map_[addr >> 8];
-        if (page) {
-            *(page + (addr & 0xFF)) = data;
+    uint8_t CPUBus::redirect_address_r(uint16_t addr) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            switch (addr & 0b111) {
+                case 0b000: return ppu_.ppu_ctrl_;
+                case 0b001: return ppu_.ppu_mask_;
+                case 0b010: return ppu_.ppu_status_;
+                case 0b011: return ppu_.oam_addr_;
+                case 0b100: return ppu_.oam_data_;
+                case 0b101: return ppu_.ppu_scroll_;
+                case 0b110: return ppu_.vram_addr_;
+                case 0b111: return ppu_.ppu_data_;
+            }
+        }
+        return last_read_;
+    }
+
+    void CPUBus::redirect_address_w(uint16_t addr, uint8_t data) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            return ppu_.invalidate(addr & 0b111, data);
         }
     }
 
-    void Bus::refill_prg_map() {
+    void CPUBus::write(uint16_t addr, uint8_t data) {
+        uint8_t* page = fast_map_.at(addr >> 8);
+        if (page) {
+            *(page + (addr & 0xFF)) = data;
+        } else {
+            redirect_address_w(addr, data);
+        }
+    }
+
+    void CPUBus::refill_prg_map() {
         for (uint16_t i = 0x00; i < 0x08; i++) {
             fast_map_[i] = &ram_[i << 8];
         }
@@ -63,7 +92,7 @@ namespace TKPEmu::NES::Devices {
         }
     }
 
-    void Bus::Reset() {
+    void CPUBus::Reset() {
         
     }
 }

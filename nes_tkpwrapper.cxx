@@ -1,26 +1,27 @@
 #include "nes_tkpwrapper.hxx"
 
 namespace TKPEmu::NES {
-    NES::NES() {}
-
-    NES::~NES() {}
-
-    void NES::HandleKeyDown(uint32_t) {}
-
-    void NES::HandleKeyUp(uint32_t) {}
-
-    void* NES::GetScreenData() {
-        return nullptr;
+    NES_TKPWrapper::NES_TKPWrapper() {
+        ppu_.SetNMI(std::bind(&Devices::CPU::NMI, &cpu_));
     }
 
-    bool& NES::IsReadyToDraw() {
-        return should_draw_;
+    NES_TKPWrapper::~NES_TKPWrapper() {}
+
+    void NES_TKPWrapper::HandleKeyDown(uint32_t) {}
+
+    void NES_TKPWrapper::HandleKeyUp(uint32_t) {}
+
+    void* NES_TKPWrapper::GetScreenData() {
+        return ppu_.GetScreenData();
     }
 
-    void NES::start() {
+    bool& NES_TKPWrapper::IsReadyToDraw() {
+        return ppu_.IsReadyToDraw();
+    }
+
+    void NES_TKPWrapper::start() {
         std::lock_guard<std::mutex> lg(ThreadStartedMutex);
         Reset();
-        Paused.store(true);
         while (!Stopped.load()) {
 			if (!Paused.load()) {
                 update();
@@ -32,11 +33,12 @@ namespace TKPEmu::NES {
         }
     }
 
-    void NES::reset() {
+    void NES_TKPWrapper::reset() {
         cpu_.Reset();
+        ppu_.Reset();
     }
 
-    void NES::update() {
+    void NES_TKPWrapper::update() {
         while (MessageQueue->PollRequests()) {
             auto request = MessageQueue->PopRequest();
             poll_request(request);
@@ -45,7 +47,7 @@ namespace TKPEmu::NES {
         cpu_.Tick();
     }
 
-    void NES::v_log() {
+    void NES_TKPWrapper::v_log() {
 		if (logging_) {
             if (log_flags_.test(0)) {
                 *log_file_ptr_ << std::setw(4) << std::setfill('0') << std::hex << std::uppercase << cpu_.PC << " A:" << std::setw(2) << (uint16_t)cpu_.A << 
@@ -59,11 +61,11 @@ namespace TKPEmu::NES {
         }
     }
 
-    bool NES::poll_uncommon_request(const Request& req) {
+    bool NES_TKPWrapper::poll_uncommon_request(const Request& req) {
         return false;
     }
 
-    bool NES::load_file(std::string path) {
+    bool NES_TKPWrapper::load_file(std::string path) {
         return cpu_.bus_.LoadCartridge(path);
     }
 }

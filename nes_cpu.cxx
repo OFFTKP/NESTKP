@@ -119,6 +119,8 @@ namespace TKPEmu::NES::Devices {
     all(SRE, P.set(C, data & 1); data = data >> 1; write(addr, data); A = A ^ data; check_nz(A));
     #undef prefetch
 
+    CPU::CPU(CPUBus& bus) : bus_(bus) {};
+
     void CPU::SEC() {
         delay(1);
         P.set(C, true);
@@ -342,6 +344,17 @@ namespace TKPEmu::NES::Devices {
         X--;
         check_nz(X);
     }
+    
+    void CPU::NMI() {
+        uint8_t p = P.to_ulong() | 0b0011'0000;
+        push(p);
+        push(PC >> 8);
+        push(PC & 0xFF);
+        uint16_t b1 = read(0xFFFB);
+        uint16_t b2 = read(0xFFFA);
+        uint16_t addr = b1 | (b2 << 8);
+        PC = addr;
+    }
 
     void CPU::fetch() {
         if (!was_prefetched_) [[unlikely]] {
@@ -358,6 +371,8 @@ namespace TKPEmu::NES::Devices {
 
     void CPU::delay(uint8_t i) {
         cycles_ += i;
+        for (int j = 0; j < i; j++)
+            bus_.ppu_.Tick();
     }
 
     uint8_t CPU::read_no_d(uint16_t addr) {
@@ -626,7 +641,7 @@ namespace TKPEmu::NES::Devices {
     }
     
     void CPU::Reset() {
-        PC = 0xC000;
+        PC = (read_no_d(0xFFFD) << 8) | read_no_d(0xFFFC);
         SP = 0xFD;
         A = 0;
         X = 0;
