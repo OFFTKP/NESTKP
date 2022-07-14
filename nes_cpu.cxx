@@ -361,12 +361,10 @@ namespace TKPEmu::NES::Devices {
         uint16_t addr = b1 | (b2 << 8);
         PC = addr;
         nmi_queued_ = false;
-        std::cout << std::hex << "jump to " << addr << std::endl;
         was_prefetched_ = false;
     }
     
     void CPU::NMI() {
-        std::cout << "NMI queued" << std::endl;
         nmi_queued_ = true;
     }
 

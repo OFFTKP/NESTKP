@@ -59,8 +59,6 @@ namespace TKPEmu::NES::Devices {
                 case 0b001: return ppu_.ppu_mask_;
                 case 0b010: {
                     auto temp = ppu_.ppu_status_;
-                    if (temp & 0x80)
-                    std::cout << "read set status:" << std::hex << (int)temp << " at: " << ppu_.master_clock_dbg_ << std::endl;
                     ppu_.ppu_status_ &= ~0x80;
                     return temp;
                 }
