@@ -43,10 +43,15 @@ namespace TKPEmu::NES::Devices {
         std::array<uint8_t, 0x800> vram_ {};
         std::array<uint8_t, 256 * 240 * 4> screen_color_data_;
         std::array<uint8_t, 256 * 240 * 4> screen_color_data_second_;
+        std::array<std::array<uint8_t, 3>, 0x40> master_palette_;
+        std::array<uint8_t, 3> universal_bg_;
+        using Palettes = std::array<std::array<std::array<uint8_t, 3>, 4>, 4>;
+        Palettes background_palettes_;
+        Palettes sprite_palettes_;
         __always_inline void handle_normal_scanline();
         __always_inline void handle_empty_scanline();
         __always_inline uint8_t fetch_nt();
-        __always_inline uint8_t fetch_at(){ return 0;};
+        __always_inline uint8_t fetch_at();
         __always_inline uint8_t fetch_pt_low();
         __always_inline uint8_t fetch_pt_high();
         __always_inline void execute_pipeline();

@@ -12,7 +12,12 @@ enum ScanlineState {
     HIGH_BG_BYTE_HIGH = 7,
 };
 namespace TKPEmu::NES::Devices {
-    PPU::PPU(std::mutex& draw_mutex) : draw_mutex_(draw_mutex) {}
+    PPU::PPU(std::mutex& draw_mutex) : draw_mutex_(draw_mutex), master_palette_{{
+        { 84, 84, 84 }, { 0, 30, 116 }, { 8, 16, 144 }, { 48, 0, 136 }, { 68, 0, 100 }, { 92, 0, 48 }, { 84, 4, 0 }, { 60, 24, 0 }, { 32, 42, 0 }, { 8, 58, 0 }, { 0, 64, 0 }, { 0, 60, 0 }, { 0, 50, 60 }, { 0, 0, 0 },
+        { 152, 150, 152 }, { 8, 76, 196 }, { 48, 50, 236 }, { 92, 30, 228 }, { 136, 20, 176 }, { 160, 20, 100 }, { 152, 34, 32 }, { 120, 60, 0 }, { 84, 90, 0 }, { 40, 114, 0 }, { 8, 124, 0 }, { 0, 118, 40 }, { 0, 102, 120 }, { 0, 0, 0 },
+        { 236, 238, 236 }, { 76, 154, 236 }, { 120, 124, 236 }, { 176, 98, 236 }, { 228, 84, 236 }, { 236, 88, 180 }, { 236, 106, 100 }, { 212, 136, 32 }, { 160, 170, 0 }, { 116, 196, 0 }, { 76, 208, 32 }, { 56, 204, 108 }, { 56, 180, 204 }, { 60, 60, 60 },
+        { 236, 238, 236 }, { 168, 204, 236 }, { 188, 188, 236 }, { 212, 178, 236 }, { 236, 174, 236 }, { 236, 174, 212 }, { 236, 180, 176 }, { 228, 196, 144 }, { 204, 210, 120 }, { 180, 222, 120 }, { 168, 226, 144 }, { 152, 226, 180 }, { 160, 214, 228 }, { 160, 162, 160 },
+    }}{}
     void PPU::SetNMI(std::function<void(void)> func) {
         fire_nmi = std::move(func);
     }
@@ -169,6 +174,11 @@ namespace TKPEmu::NES::Devices {
         auto addr = (nt_addr_ + fetch_x_ + fetch_y_ * 32) & 0x7FF;
         return vram_.at(addr);
     }
+
+    uint8_t PPU::fetch_at() {
+        auto addr = (nt_addr_ & 0x7FF) + (fetch_x_ / 4) + (fetch_y_ / 4) * 8 + 0x3C0;
+        return vram_.at(addr);
+    }
     
     uint8_t PPU::fetch_pt_low() {
         uint16_t addr = nt_latch_ * 16 + (scanline_ & 0b111);
@@ -181,11 +191,12 @@ namespace TKPEmu::NES::Devices {
     }
 
     void PPU::draw_pixel() {
-        uint8_t bg_cur = piso_bg_high_ | piso_bg_low_;
-        auto pixel = cur_x_ * 4 + cur_y_ * 256 * 4;//scanline_cycle_ - 1;
-        screen_color_data_second_.at(pixel) = !!(bg_cur & 0x80) * 255;
-        screen_color_data_second_.at(pixel + 1) = !!(bg_cur & 0x80) * 255;
-        screen_color_data_second_.at(pixel + 2) = !!(bg_cur & 0x80) * 255;
+        uint8_t bg_cur = (((piso_bg_high_ >> 7) & 0b1) << 1) | ((piso_bg_low_ >> 7) & 0b1);
+        auto pixel = cur_x_ * 4 + cur_y_ * 256 * 4;
+        auto pal_index = 1;
+        screen_color_data_second_.at(pixel) = background_palettes_[pal_index][bg_cur][0];
+        screen_color_data_second_.at(pixel + 1) = background_palettes_[pal_index][bg_cur][1];
+        screen_color_data_second_.at(pixel + 2) = background_palettes_[pal_index][bg_cur][2];
         screen_color_data_second_.at(pixel + 3) = 255;
         cur_x_++;
         if (cur_x_ == 256)
@@ -196,17 +207,54 @@ namespace TKPEmu::NES::Devices {
 
     uint8_t PPU::read(uint16_t addr) {
         if (addr < 0x2000)
-            return chr_rom_[addr & 0x1FFF];
+            return chr_rom_.at(addr & 0x1FFF);
         else if (addr < 0x3000)
-            return vram_[addr & 0x7FF];
+            return vram_.at(addr & 0x7FF);
         return 0;
     }
 
     void PPU::write(uint16_t addr, uint8_t data) {
         if (addr < 0x2000) {
             chr_rom_.at(addr) = data;
-        } else if (addr < 0x3000)
+        } else if (addr < 0x3000) {
             vram_.at(addr & 0x7FF) = data;
+        } else if (addr > 0x3F00 && addr < 0x3F20) {
+            data &= 0x1F;
+            addr &= 0xFF;
+            switch (addr) {
+                case 0x00:
+                case 0x10: {
+                    universal_bg_[0] = master_palette_[data][0];
+                    universal_bg_[1] = master_palette_[data][1];
+                    universal_bg_[2] = master_palette_[data][2];
+                    break;
+                }
+                case 0x1: case 0x2: case 0x3:
+                case 0x5: case 0x6: case 0x7:
+                case 0x9: case 0xA: case 0xB:
+                case 0xD: case 0xE: case 0xF: {
+                    auto cur = addr / 4;
+                    auto col = (addr - 1) & 0b11;
+                    std::cout << "write to " << cur << " col:" << col << std::endl;
+                    background_palettes_.at(cur).at(col).at(0) = master_palette_[data][0];
+                    background_palettes_.at(cur).at(col).at(1) = master_palette_[data][1];
+                    background_palettes_.at(cur).at(col).at(2) = master_palette_[data][2];
+                    break;
+                }
+                case 0x11: case 0x12: case 0x13:
+                case 0x15: case 0x16: case 0x17:
+                case 0x19: case 0x1A: case 0x1B:
+                case 0x1D: case 0x1E: case 0x1F: {
+                    auto cur = (addr & 0xF) / 4;
+                    auto col = (addr - 1) & 0b11;
+                    std::cout << "write to " << cur << " col:" << col << std::endl;
+                    sprite_palettes_.at(cur).at(col).at(0) = master_palette_[data][0];
+                    sprite_palettes_.at(cur).at(col).at(1) = master_palette_[data][1];
+                    sprite_palettes_.at(cur).at(col).at(2) = master_palette_[data][2];
+                    break;
+                }
+            }
+        }
     }
     
     void PPU::Reset() {
