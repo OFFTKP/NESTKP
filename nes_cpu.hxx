@@ -5,6 +5,7 @@
 #include <bitset>
 #include <iostream>
 #include "nes_cpubus.hxx"
+#include <atomic>
 #define t(x) template<class T> void x()
 #define implied(x, func) template<> void CPU::x<Implied>() { \
     func; \
@@ -119,7 +120,7 @@ namespace TKPEmu::NES {
 namespace TKPEmu::NES::Devices {
     class CPU {
     public:
-        CPU(CPUBus& bus);
+        CPU(CPUBus& bus, std::atomic_bool& paused);
         void Tick();
         void Reset();
         void SoftReset();
@@ -137,18 +138,21 @@ namespace TKPEmu::NES::Devices {
         t(ASL); t(ROR); t(ROL); t(STY); t(INC); t(DEC); t(NOP); t(LAX);
         t(SAX); t(DCP); t(ISC); t(SLO); t(RLA); t(RRA); t(SRE);
         __always_inline void delay(uint8_t i);
-        uint8_t A, X, Y, SP;
-        std::bitset<8> P;
-        uint16_t PC;
+        uint8_t A = 0, X = 0, Y = 0, SP = 0;
+        std::bitset<8> P = 0;
+        uint16_t PC = 0;
         uint64_t cycles_ = 0;
         uint8_t fetched_ = 0;
         bool was_prefetched_ = false;
+        bool nmi_queued_ = false;
+        std::atomic_bool& paused_;
 
         uint8_t read_no_d(uint16_t addr);
         uint8_t read(uint16_t addr);
         void push(uint8_t data);
         uint8_t pull();
         void write(uint16_t addr, uint8_t data);
+        void NMI_impl();
 
         __always_inline void fetch();
         __always_inline void prefetch();

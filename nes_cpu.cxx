@@ -4,8 +4,8 @@ constexpr uint8_t C = 0;
 constexpr uint8_t Z = 1;
 constexpr uint8_t I = 2;
 constexpr uint8_t D = 3;
-constexpr uint8_t B_4 = 4;
-constexpr uint8_t B_5 = 5;
+constexpr uint8_t B = 4;
+constexpr uint8_t U = 5;
 constexpr uint8_t V = 6;
 constexpr uint8_t N = 7;
 #define check_nz(x) P.set(Z, x == 0); P.set(N, x & 0x80)
@@ -117,7 +117,7 @@ namespace TKPEmu::NES::Devices {
     all(SRE, P.set(C, data & 1); data = data >> 1; write(addr, data); A = A ^ data; check_nz(A));
     #undef prefetch
 
-    CPU::CPU(CPUBus& bus) : bus_(bus) {};
+    CPU::CPU(CPUBus& bus, std::atomic_bool& paused) : bus_(bus), paused_(paused) {};
 
     void CPU::SEC() {
         delay(1);
@@ -347,18 +347,27 @@ namespace TKPEmu::NES::Devices {
         X--;
         check_nz(X);
     }
-    
-    void CPU::NMI() {
-        std::cout << "nmi" << std::endl;
+
+    void CPU::NMI_impl() {
         push(PC >> 8);
         push(PC & 0xFF);
+        P.set(B, false);
+        P.set(U, true);
+        P.set(I, true);
         uint8_t p = P.to_ulong() & ~0b0011'0000;
         push(p);
-        P.set(I, 1);
         uint16_t b1 = read(0xFFFA);
         uint16_t b2 = read(0xFFFB);
         uint16_t addr = b1 | (b2 << 8);
         PC = addr;
+        nmi_queued_ = false;
+        std::cout << std::hex << "jump to " << addr << std::endl;
+        was_prefetched_ = false;
+    }
+    
+    void CPU::NMI() {
+        std::cout << "NMI queued" << std::endl;
+        nmi_queued_ = true;
     }
 
     void CPU::BRK() {
@@ -658,6 +667,8 @@ namespace TKPEmu::NES::Devices {
     void CPU::Tick() {
         fetch();
         execute();
+        if (nmi_queued_)
+            NMI_impl();
     }
     
     void CPU::Reset() {

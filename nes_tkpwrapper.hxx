@@ -14,7 +14,7 @@ namespace TKPEmu::NES {
         void v_log() override;
         Devices::PPU ppu_ { DrawMutex };
         Devices::CPUBus cpubus_ { ppu_ };
-        Devices::CPU cpu_ { cpubus_ };
+        Devices::CPU cpu_ { cpubus_, Paused };
     };
 }
 #endif

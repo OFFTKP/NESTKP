@@ -23,6 +23,8 @@ namespace TKPEmu::NES::Devices {
             // TODO: exponent size
             auto prg_rom_size = ((header_.prg_chr_msb & 0b1111) << 8) | header_.prg_lsb;
             prg_rom_.resize(prg_rom_size * kb16);
+            // Fill with illegal opcodes so that we can't run from a bad area without knowing
+            std::fill(prg_rom_.begin(), prg_rom_.end(), 2);
             ifs.read(reinterpret_cast<char*>(prg_rom_.data()), prg_rom_size * kb16);
             auto chr_rom_size = ((header_.prg_chr_msb >> 4) << 8) | header_.chr_lsb;
             if (chr_rom_size == 0) {
@@ -32,6 +34,7 @@ namespace TKPEmu::NES::Devices {
                 ifs.read(reinterpret_cast<char*>(ppu_.chr_rom_.data()), chr_rom_size * kb8);
             }
             refill_prg_map();
+            ram_.fill(0);
         } else {
             return false;
         }

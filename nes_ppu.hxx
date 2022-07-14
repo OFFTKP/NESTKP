@@ -17,8 +17,8 @@ namespace TKPEmu::NES::Devices {
         void SetNMI(std::function<void()> func);
     private:
         bool should_draw_ = false;
-        uint8_t ppu_ctrl_, ppu_mask_, ppu_status_, oam_addr_,
-            oam_data_, ppu_scroll_, ppu_data_, oam_dma_;
+        uint8_t ppu_ctrl_ = 0, ppu_mask_ = 0, ppu_status_ = 0, oam_addr_ = 0,
+            oam_data_ = 0, ppu_scroll_ = 0, ppu_data_ = 0, oam_dma_ = 0;
         uint16_t vram_addr_ = 0;
         int scanline_ = 0;
         int scanline_cycle_ = 0;
@@ -40,7 +40,7 @@ namespace TKPEmu::NES::Devices {
         bool sprite_size_ = false;
         bool ppu_master_ = false;
         bool nmi_output_ = false;
-        std::array<uint8_t, 0x800> vram_;
+        std::array<uint8_t, 0x800> vram_ {};
         std::array<uint8_t, 256 * 240 * 4> screen_color_data_;
         std::array<uint8_t, 256 * 240 * 4> screen_color_data_second_;
         __always_inline void handle_normal_scanline();
