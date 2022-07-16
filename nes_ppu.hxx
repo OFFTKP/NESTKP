@@ -50,6 +50,7 @@ namespace TKPEmu::NES::Devices {
         Palettes sprite_palettes_ {};
         __always_inline void handle_normal_scanline();
         __always_inline void handle_empty_scanline();
+        __always_inline void handle_prerender_scanline();
         __always_inline uint8_t fetch_nt();
         __always_inline uint8_t fetch_at();
         __always_inline uint8_t fetch_pt_low();

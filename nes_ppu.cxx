@@ -45,14 +45,11 @@ namespace TKPEmu::NES::Devices {
             scanline_cycle_++;
         } else if (scanline_ == 261) {
             if (scanline_cycle_ == 1) {
+                fetch_x_ = 0;
                 ppu_status_ &= ~0x80;
             }
-            handle_empty_scanline();
+            handle_prerender_scanline();
             scanline_cycle_++;
-        } else if (scanline_ == 262) {
-            scanline_ = 0;
-            scanline_cycle_ = 0;
-            cur_y_ = 0;
         }
         master_clock_dbg_++;
     }
@@ -100,6 +97,28 @@ namespace TKPEmu::NES::Devices {
             scanline_++;
             scanline_cycle_ = 0;
             cur_y_++;
+        }
+    }
+
+    void PPU::handle_prerender_scanline() {
+        if (scanline_cycle_ >= 321 && scanline_cycle_ <= 336) {
+            fetch_y_ = 0;
+            scanline_ = 0;
+            execute_pipeline();
+            scanline_ = 261;
+            pixel_cycle_++;
+            if (pixel_cycle_ == 8) {
+                pixel_cycle_ = 0;
+                if (scanline_cycle_ == 328) {
+                    fetch_x_ += 1;
+                    piso_bg_high_ <<= 8;
+                    piso_bg_low_ <<= 8;
+                }
+            }
+        } else if (scanline_cycle_ == 340) {
+            scanline_ = 0;
+            cur_y_ = 0;
+            scanline_cycle_ = -1;
         }
     }
 
