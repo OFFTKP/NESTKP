@@ -396,8 +396,10 @@ namespace TKPEmu::NES::Devices {
 
     void CPU::delay(uint8_t i) {
         cycles_ += i;
-        for (int j = 0; j < i; j++)
+        for (int j = 0; j < i; j++) {
             bus_.ppu_.Tick();
+            bus_.apu_.Tick();
+        }
     }
 
     uint8_t CPU::read_no_d(uint16_t addr) {

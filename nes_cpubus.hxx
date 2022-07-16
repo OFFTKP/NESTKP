@@ -2,6 +2,7 @@
 #ifndef TKP_NES_CPUBUS_H
 #define TKP_NES_CPUBUS_H
 #include "nes_ppu.hxx"
+#include "nes_apu.hxx"
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -30,7 +31,7 @@ namespace TKPEmu::NES::Devices {
     };
     class CPUBus {
     public:
-        CPUBus(PPU& ppu);
+        CPUBus(PPU& ppu, APU& apu);
         bool LoadCartridge(std::string path);
         void Reset();
     private:
@@ -48,6 +49,7 @@ namespace TKPEmu::NES::Devices {
         std::array<uint8_t*, 0x100> fast_map_;
         std::array<uint8_t, 0x800> ram_;
         PPU& ppu_;
+        APU& apu_;
         friend class CPU;
     };
 }

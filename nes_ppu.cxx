@@ -17,7 +17,8 @@ namespace TKPEmu::NES::Devices {
         { 152, 150, 152 }, { 8, 76, 196 }, { 48, 50, 236 }, { 92, 30, 228 }, { 136, 20, 176 }, { 160, 20, 100 }, { 152, 34, 32 }, { 120, 60, 0 }, { 84, 90, 0 }, { 40, 114, 0 }, { 8, 124, 0 }, { 0, 118, 40 }, { 0, 102, 120 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 },
         { 236, 238, 236 }, { 76, 154, 236 }, { 120, 124, 236 }, { 176, 98, 236 }, { 228, 84, 236 }, { 236, 88, 180 }, { 236, 106, 100 }, { 212, 136, 32 }, { 160, 170, 0 }, { 116, 196, 0 }, { 76, 208, 32 }, { 56, 204, 108 }, { 56, 180, 204 }, { 60, 60, 60 }, { 0, 0, 0 }, { 0, 0, 0 },
         { 236, 238, 236 }, { 168, 204, 236 }, { 188, 188, 236 }, { 212, 178, 236 }, { 236, 174, 236 }, { 236, 174, 212 }, { 236, 180, 176 }, { 228, 196, 144 }, { 204, 210, 120 }, { 180, 222, 120 }, { 168, 226, 144 }, { 152, 226, 180 }, { 160, 214, 228 }, { 160, 162, 160 }, { 0, 0, 0 }, { 0, 0, 0 },
-    }}{}
+    }}{
+    }
     void PPU::SetNMI(std::function<void(void)> func) {
         fire_nmi = std::move(func);
     }
@@ -50,6 +51,7 @@ namespace TKPEmu::NES::Devices {
             scanline_cycle_++;
         } else if (scanline_ == 262) {
             scanline_ = 0;
+            scanline_cycle_ = 0;
             cur_y_ = 0;
         }
         master_clock_dbg_++;
@@ -57,30 +59,39 @@ namespace TKPEmu::NES::Devices {
 
     void PPU::handle_normal_scanline() {
         if (scanline_cycle_ == 0) {
-            // NOP
+            cur_x_ = 0;
         } else if (scanline_cycle_ <= 256) {
-            fetch_x_ = (scanline_cycle_ + 8 - 1) / 8;
+            fetch_x_ = 2 + (scanline_cycle_ - 1) / 8;
+            fetch_y_ = cur_y_ / 8;
+            draw_pixel();
+            execute_pipeline();
+            pixel_cycle_++;
+            if (pixel_cycle_ == 8)
+                pixel_cycle_ = 0;
+        } else if (scanline_cycle_ <= 320) {
+            if (scanline_cycle_ == 257) {
+                piso_bg_high_ = 0;
+                piso_bg_low_ = 0;
+                fetch_x_ = 0;
+                scanline_++;
+                cur_y_++;
+            }
+        } else if (scanline_cycle_ <= 336) {
             fetch_y_ = cur_y_ / 8;
             execute_pipeline();
-            draw_pixel();
             pixel_cycle_++;
-            if (pixel_cycle_ == 8)
+            if (pixel_cycle_ == 8) {
                 pixel_cycle_ = 0;
-        } else if (scanline_cycle_ < 321) {
-
-        } else if (scanline_cycle_ <= 336) {
-            fetch_x_ = 0;
-            fetch_y_ = (cur_y_ + 1) / 8;
-            execute_pipeline();
-            pixel_cycle_++;
-            if (pixel_cycle_ == 8)
-                pixel_cycle_ = 0;
+                if (scanline_cycle_ == 328) {
+                    fetch_x_ += 1;
+                    piso_bg_high_ <<= 8;
+                    piso_bg_low_ <<= 8;
+                }
+            }
         } else if (scanline_cycle_ <= 340) {
 
         } else {
-            scanline_++;
-            scanline_cycle_ = 0;
-            cur_y_++;
+            scanline_cycle_ = -1;
         }
     }
 
@@ -198,8 +209,6 @@ namespace TKPEmu::NES::Devices {
         screen_color_data_second_.at(pixel + 2) = background_palettes_[pal_index][bg_cur][2];
         screen_color_data_second_.at(pixel + 3) = 255;
         cur_x_++;
-        if (cur_x_ == 256)
-            cur_x_ = 0;
         piso_bg_low_ <<= 1;
         piso_bg_high_ <<= 1;
     }

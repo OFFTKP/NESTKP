@@ -25,8 +25,8 @@ namespace TKPEmu::NES::Devices {
         int pixel_cycle_ = 0;
         uint8_t nt_latch_ = 0;
         uint8_t at_latch_ = 0;
-        uint8_t pt_low_latch_ = 0;
-        uint8_t pt_high_latch_ = 0;
+        uint16_t pt_low_latch_ = 0;
+        uint16_t pt_high_latch_ = 0;
         uint16_t piso_bg_low_ = 0;
         uint16_t piso_bg_high_ = 0;
         uint16_t nt_addr_ = 0;
@@ -46,8 +46,8 @@ namespace TKPEmu::NES::Devices {
         std::array<std::array<uint8_t, 3>, 0x40> master_palette_;
         std::array<uint8_t, 3> universal_bg_;
         using Palettes = std::array<std::array<std::array<uint8_t, 3>, 4>, 4>;
-        Palettes background_palettes_;
-        Palettes sprite_palettes_;
+        Palettes background_palettes_ {};
+        Palettes sprite_palettes_ {};
         __always_inline void handle_normal_scanline();
         __always_inline void handle_empty_scanline();
         __always_inline uint8_t fetch_nt();

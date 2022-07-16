@@ -6,7 +6,7 @@
 #define kb8 0x2000
 
 namespace TKPEmu::NES::Devices {
-    CPUBus::CPUBus(PPU& ppu) : ppu_(ppu) {}
+    CPUBus::CPUBus(PPU& ppu, APU& apu) : ppu_(ppu), apu_(apu) {}
     bool CPUBus::LoadCartridge(std::string path) {
         std::ifstream ifs(path, std::ios::in | std::ios::binary);
         if (ifs.is_open()) {
@@ -75,6 +75,8 @@ namespace TKPEmu::NES::Devices {
     void CPUBus::redirect_address_w(uint16_t addr, uint8_t data) {
         if (addr >= 0x2000 && addr <= 0x3FFF) {
             return ppu_.invalidate(addr & 0b111, data);
+        } else if (addr >= 0x4000 && addr <= 0x4017) {
+
         }
     }
 
