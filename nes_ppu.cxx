@@ -145,6 +145,7 @@ namespace TKPEmu::NES::Devices {
             pt_high_latch_ = fetch_pt_high();
             piso_bg_high_ |= pt_high_latch_;
             piso_bg_low_ |= pt_low_latch_;
+            piso_at_ = at_latch_;
             break;
             default:
             break;
@@ -203,8 +204,8 @@ namespace TKPEmu::NES::Devices {
     }
 
     uint8_t PPU::fetch_at() {
-        auto addr = (nt_addr_ & 0x7FF) + (fetch_x_ / 4) + (fetch_y_ / 4) * 8 + 0x3C0;
-        return vram_.at(addr);
+        auto addr = (nt_addr_) + (fetch_x_ / 4) + (fetch_y_ / 4) * 8 + 0x3C0;
+        return vram_.at(addr & 0x7FF);
     }
     
     uint8_t PPU::fetch_pt_low() {
@@ -220,9 +221,9 @@ namespace TKPEmu::NES::Devices {
     void PPU::draw_pixel() {
         uint8_t bg_cur = ((piso_bg_high_ >> 15) << 1) | (piso_bg_low_ >> 15);
         auto pixel = cur_x_ * 4 + cur_y_ * 256 * 4;
-        uint8_t left_shift = !!(fetch_x_ & 0b10) * 2;
-        uint8_t top_shift = (fetch_y_ & 0b10000) * 4;
-        auto pal_index = (at_latch_ >> left_shift) & 0b11;
+        uint8_t left_shift = 0;//!!(cur_x_ & 0b00000) * 2;
+        uint8_t top_shift = 0;//!!(cur_y_ & 0b10000) * 4;
+        auto pal_index = ((piso_at_ >> left_shift) >> top_shift) & 0b11;
         screen_color_data_second_.at(pixel) = background_palettes_[pal_index][bg_cur][0];
         screen_color_data_second_.at(pixel + 1) = background_palettes_[pal_index][bg_cur][1];
         screen_color_data_second_.at(pixel + 2) = background_palettes_[pal_index][bg_cur][2];

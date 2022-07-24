@@ -76,7 +76,7 @@ namespace TKPEmu::NES::Devices {
         if (addr >= 0x2000 && addr <= 0x3FFF) {
             return ppu_.invalidate(addr & 0b111, data);
         } else if (addr >= 0x4000 && addr <= 0x4017) {
-
+            return apu_.invalidate(addr & 0b11111, data);
         }
     }
 

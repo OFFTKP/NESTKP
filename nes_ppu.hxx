@@ -29,6 +29,7 @@ namespace TKPEmu::NES::Devices {
         uint16_t pt_high_latch_ = 0;
         uint16_t piso_bg_low_ = 0;
         uint16_t piso_bg_high_ = 0;
+        uint8_t piso_at_ = 0;
         uint16_t nt_addr_ = 0;
         uint16_t cur_y_ = 0;
         uint16_t cur_x_ = 0;
